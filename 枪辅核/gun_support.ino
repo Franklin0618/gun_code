@@ -16,7 +16,7 @@ void io_init(){
 
     digitalWrite(MECHINE_POS,LOW);
     digitalWrite(MECHINE_NEG,LOW);
-    digitalWrite(THROW,LOW);
+    digitalWrite(THROW,HIGH);
 }
 
 void mechine_pos(){
