@@ -1,7 +1,6 @@
 /////////////////////////////////////////////////////头文件
 #include<WiFi.h>
-#include <WiFiUdp.h>
-#include <Adafruit_GFX.h>
+#include<Adafruit_GFX.h>
 #include<Adafruit_ST7789.h>
 #include<SPI.h>
 /////////////////////////////////////////////////////宏定义
@@ -17,6 +16,7 @@
 #define PUSH                27  //按压开关控制
 #define FOG_CTRL            34 //雾化器控制
 #define SHAKE_CTRL          33         //震动控制 
+#define LED                 2           //板载灯
 //屏幕宏
 #define TFT_MOSI 23
 #define TFT_SCLK 18
@@ -28,7 +28,7 @@
 
 //dac采集引脚
 #define BATTERY 20
-#define BULLET  19
+#define BULLET  15
 
 //////////////////////////////////////////////////////全局变量
 WiFiUDP Udp_send;                           //创建UDP发送对象
@@ -80,7 +80,7 @@ void nfc_detect(){
 
 //抛弹检测
 void throw_bullet_detect(){
-    if(digitalRead()==LOW){
+    if(digitalRead(NEAR_SWITCH)==LOW){
         bitWrite(buf_send[0], 0, 1);
         udp_send();     //优先进行网络通信
         shake_signal(); //振动信号
@@ -91,16 +91,16 @@ void throw_bullet_detect(){
 
 //震动通知
 void shake_signal(){
-    digitalWrite(SHAKE_CTRL,LOW);
-    delay(10);
     digitalWrite(SHAKE_CTRL,HIGH);
+    delay(5);
+    digitalWrite(SHAKE_CTRL,LOW);
 }
 
 //喷雾和枪口火焰通知
 void gun_fire_signal(){
-    digitalWrite(FOG_CTRL,LOW);
-    delay(10);
     digitalWrite(FOG_CTRL,HIGH);
+    delay(5);
+    digitalWrite(FOG_CTRL,LOW);
 }
 
 //显示屏
@@ -198,10 +198,12 @@ void net_init(){
 //io初始化
 void io_init(){
     pinMode(NEAR_SWITCH,INPUT);
-    pinMode(PUSH,INTPUT);
+    pinMode(PUSH,INPUT);
     pinMode(FOG_CTRL,OUTPUT);
     pinMode(SHAKE_CTRL,OUTPUT);
+    pinMode(LED,OUTPUT);
 
+    digitalWrite(LED,HIGH);
     digitalWrite(FOG_CTRL,LOW);
     digitalWrite(SHAKE_CTRL,LOW);
 
