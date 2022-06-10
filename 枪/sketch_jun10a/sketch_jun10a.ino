@@ -23,20 +23,20 @@
 #define TFT_CS    5 // Not connected
 
 #define TFT_DC    4
-#define TFT_RST   2  // Connect reset to ensure display initialises
+#define TFT_RST   26  // Connect reset to ensure display initialises
 //#define TFT_MISO 19
 
 //dac采集引脚
 #define BATTERY 20
-#define BULLET  15
-
+#define BULLET  32
+#define MAXBULLET 50
 //////////////////////////////////////////////////////全局变量
 WiFiUDP Udp_send;                           //创建UDP发送对象
 WiFiUDP Udp_recv;                           //创建UDP接收对象
 
 Adafruit_ST7789 tft=Adafruit_ST7789(TFT_CS,TFT_DC,TFT_MOSI,TFT_SCLK,TFT_RST);
 
-int battery=0;
+int battery=100;
 int bullet=0;
 char battery_ch[4];
 char bullet_ch[4];
@@ -134,7 +134,7 @@ void display(){
 //dac采集
 float analogread_float_return(int pin){
     float num=(float)analogRead(pin);
-    return num/4095*100;
+    return num/4095;
 }
 
 //显示屏初始化
@@ -155,12 +155,12 @@ void display_init(){
 void ammo_and_battery_detect(){
     while(1){
         tft.drawLine(0, 160, 172, 160, ST77XX_RED);
-        if(int(analogread_float_return(BATTERY))!=battery){
-            battery=(int)analogread_float_return(BATTERY);
-            display();
-        }
+        // if(int(analogread_float_return(BATTERY))!=battery){
+        //     battery=(int)analogread_float_return(BATTERY);
+        //     display();
+        // }
         if(int(analogread_float_return(BULLET))!=bullet){
-            bullet=(int)analogread_float_return(BULLET);
+            bullet=(int)analogread_float_return(BULLET)*MAXBULLET;
             display();
         }
     }
@@ -219,5 +219,13 @@ void setup(){
 
 void loop(){
     throw_bullet_detect();
-
+    tft.drawLine(0, 160, 172, 160, ST77XX_RED);
+    if(int(analogread_float_return(BATTERY))!=battery){
+        battery=(int)analogread_float_return(BATTERY);
+        display();
+    }
+    if(int(analogread_float_return(BULLET))!=bullet){
+        bullet=(int)analogread_float_return(BULLET);
+        display();
+    }
 }
