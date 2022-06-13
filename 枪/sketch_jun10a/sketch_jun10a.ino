@@ -43,6 +43,11 @@ char bullet_ch[4];
 
 byte buf_send[1];                              //发送区
 byte buf_recv[1];                               //接收区
+uint8_t serial_send[8]={0x01,0x08,0xA3,0x20,0x01,0x01,0x00,0x75};   //nfc读卡器扇区读取命令
+byte readbuff[22];                              //串口读取缓冲区
+char macStr[44];                                //将串口读取到的数据转化位char型存放的数组
+char old_macStr[44];                            //状态对比
+int old_sta;                                    //按压开关状态对比变量
 //网络涉及变量
 #ifdef COMPANY
 const char *ssid = "wifi名字长才能穿透墙";              //需要连接的wifi的名字
@@ -72,10 +77,51 @@ char* ip = "192.168.31.201";                                            //目标
 IPAddress staticIP(192, 168, 31, 152);                                  //设置本机静态ip地址
 #endif
 
+void snprintf_buf(){
+    snprintf(macStr, sizeof(macStr), "%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X",
+           readbuff[0], readbuff[1], readbuff[2], readbuff[3], readbuff[4], readbuff[5],
+           readbuff[6], readbuff[7], readbuff[8], readbuff[9], readbuff[10], readbuff[11],
+           readbuff[12], readbuff[13], readbuff[14], readbuff[15], readbuff[16], readbuff[17],
+           readbuff[18], readbuff[19], readbuff[20], readbuff[21]);
+}
 
-//nfc左右手检测
+//nfc检测
+//读取读卡器扇区中的数据，如果是1则是左手，如果是0则是右手
 void nfc_detect(){
-
+    while (1){
+        Serial.write(serial_send,8);
+        while(Serial.available()>0){                
+            Serial.read(readbuff,22);
+        }
+        snprintf_buf();
+        if(macStr[41]=='1'&&old_macStr[41]!='1'){        //左手握
+            bitWrite(buf_send[0], 1, 1);
+            udp_send();
+            memcpy(old_macStr,macStr,44);
+            memset(buf_send,0,1);
+        }
+        else if(macStr[41]=='0'&&old_macStr[41]!='0'){  //右手握
+            bitWrite(buf_send[0],3,1);
+            udp_send();
+            memcpy(old_macStr,macStr,44);
+            memset(buf_send,0,1);
+        }
+        if (macStr=="0")
+        {
+            if(old_macStr[41]=='1'){        //左手松
+                bitWrite(buf_send[0],2,1);
+                udp_send();
+                memcpy(old_macStr,macStr,44);
+                memset(buf_send,0,1);
+            }
+            else if(old_macStr[41]=='0'){      //右手松
+                bitWrite(buf_send[0],4,1;
+                udp_send();
+                memcpy(old_macStr,macStr,44);
+                memset(buf_send,0,1);
+            }
+        }
+    }   
 }
 
 //抛弹检测
@@ -86,6 +132,24 @@ void throw_bullet_detect(){
         shake_signal(); //振动信号
         gun_fire_signal();  //喷雾信号
         bitWrite(buf_send[0], 0, 0);
+    }
+}
+
+//前按压开关检测
+void push_detect(){
+    while(1){
+        if(old_sta!=digitalRead(PUSH)){
+            if(digitalRead(PUSH)==1){
+                bitWrite(buf_send[0], 6, 1);
+                udp_send();
+                memset(buf_send,0,1);
+            }else if(digitalRead(PUSH)==0){
+                bitWrite(buf_send[0], 5, 1);
+                udp_send();
+                memset(buf_send,0,1);
+            }
+            old_sta=digitalRead(PUSH);
+        }
     }
 }
 
@@ -215,17 +279,30 @@ void setup(){
     net_init();
     io_init();
     display_init();
+    xTaskCreate(
+              nfc_detect,          /*任务函数*/
+              "nfc_detect",        /*带任务名称的字符串*/
+              10000,            /*堆栈大小，单位为字节*/
+              NULL,             /*作为任务输入传递的参数*/
+              1,                /*任务的优先级*/
+              NULL);            /*任务句柄*/
+    xTaskCreate(
+                ammo_and_battery_detect,          /* Task function. */
+                "ammo_and_battery_detect",        /* String with name of task. */
+                10000,            /* Stack size in bytes. */
+                NULL,             /* Parameter passed as input of the task */
+                1,                /* Priority of the task. */
+                NULL);            /* Task handle. */
+    xTaskCreate(
+              push_detect,          /* Task function. */
+              "push_detect",        /* String with name of task. */
+              10000,            /* Stack size in bytes. */
+              NULL,             /* Parameter passed as input of the task */
+              1,                /* Priority of the task. */
+              NULL);            /* Task handle. */
 }
+
 
 void loop(){
     throw_bullet_detect();
-    tft.drawLine(0, 160, 172, 160, ST77XX_RED);
-    if(int(analogread_float_return(BATTERY))!=battery){
-        battery=(int)analogread_float_return(BATTERY);
-        display();
-    }
-    if(int(analogread_float_return(BULLET))!=bullet){
-        bullet=(int)analogread_float_return(BULLET);
-        display();
-    }
 }
