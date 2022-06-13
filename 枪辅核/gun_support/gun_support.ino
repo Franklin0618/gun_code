@@ -1,9 +1,9 @@
 #define TRIGGER         1
-#define MECHINE_POS     2
+#define MECHINE_POS     6
 #define MECHINE_NEG     3
 #define THROW           4
 #define SPRING_PIPE     5
-
+#define LED             2
 
 int cmd=0;
 
@@ -13,10 +13,11 @@ void io_init(){
     pinMode(MECHINE_POS,OUTPUT);
     pinMode(MECHINE_NEG,OUTPUT);
     pinMode(THROW,OUTPUT);
-
+    pinMode(LED,OUTPUT);
     digitalWrite(MECHINE_POS,LOW);
     digitalWrite(MECHINE_NEG,LOW);
     digitalWrite(THROW,HIGH);
+    digitalWrite(LED,HIGH);
 }
 
 void mechine_pos(){

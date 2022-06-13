@@ -3,6 +3,7 @@
 #include<Adafruit_GFX.h>
 #include<Adafruit_ST7789.h>
 #include<SPI.h>
+#include<esp_task_wdt.h>
 /////////////////////////////////////////////////////宏定义
 #define COMPANY
 //#define PLAY_GROUND
@@ -14,7 +15,7 @@
 #define NEAR_SWITCH         25  //接近开关
 #define READER1             7  //读卡器
 #define PUSH                27  //按压开关控制
-#define FOG_CTRL            34 //雾化器控制
+#define FOG_CTRL            35 //雾化器控制
 #define SHAKE_CTRL          33         //震动控制 
 #define LED                 2           //板载灯
 //屏幕宏
@@ -87,8 +88,9 @@ void snprintf_buf(){
 
 //nfc检测
 //读取读卡器扇区中的数据，如果是1则是左手，如果是0则是右手
-void nfc_detect(){
+void nfc_detect(void * parameter){
     while (1){
+        push_detect();
         Serial.write(serial_send,8);
         while(Serial.available()>0){                
             Serial.read(readbuff,22);
@@ -106,8 +108,7 @@ void nfc_detect(){
             memcpy(old_macStr,macStr,44);
             memset(buf_send,0,1);
         }
-        if (macStr=="0")
-        {
+        if (macStr=="0"){
             if(old_macStr[41]=='1'){        //左手松
                 bitWrite(buf_send[0],2,1);
                 udp_send();
@@ -115,7 +116,7 @@ void nfc_detect(){
                 memset(buf_send,0,1);
             }
             else if(old_macStr[41]=='0'){      //右手松
-                bitWrite(buf_send[0],4,1;
+                bitWrite(buf_send[0],4,1);
                 udp_send();
                 memcpy(old_macStr,macStr,44);
                 memset(buf_send,0,1);
@@ -131,13 +132,13 @@ void throw_bullet_detect(){
         udp_send();     //优先进行网络通信
         shake_signal(); //振动信号
         gun_fire_signal();  //喷雾信号
+        Serial.println("trigger");
         bitWrite(buf_send[0], 0, 0);
     }
 }
 
 //前按压开关检测
 void push_detect(){
-    while(1){
         if(old_sta!=digitalRead(PUSH)){
             if(digitalRead(PUSH)==1){
                 bitWrite(buf_send[0], 6, 1);
@@ -150,20 +151,20 @@ void push_detect(){
             }
             old_sta=digitalRead(PUSH);
         }
-    }
+    
 }
 
 //震动通知
 void shake_signal(){
     digitalWrite(SHAKE_CTRL,HIGH);
-    delay(5);
+    delay(500);
     digitalWrite(SHAKE_CTRL,LOW);
 }
 
 //喷雾和枪口火焰通知
 void gun_fire_signal(){
     digitalWrite(FOG_CTRL,HIGH);
-    delay(5);
+    delay(20);
     digitalWrite(FOG_CTRL,LOW);
 }
 
@@ -216,7 +217,7 @@ void display_init(){
 }
 
 //弹夹计数及电量检测
-void ammo_and_battery_detect(){
+void ammo_and_battery_detect(void*para){
     while(1){
         tft.drawLine(0, 160, 172, 160, ST77XX_RED);
         // if(int(analogread_float_return(BATTERY))!=battery){
@@ -270,7 +271,7 @@ void io_init(){
     digitalWrite(LED,HIGH);
     digitalWrite(FOG_CTRL,LOW);
     digitalWrite(SHAKE_CTRL,LOW);
-
+    digitalWrite(NEAR_SWITCH,HIGH);
     Serial.println("io init success!");
 }
 
@@ -279,30 +280,28 @@ void setup(){
     net_init();
     io_init();
     display_init();
-    xTaskCreate(
-              nfc_detect,          /*任务函数*/
-              "nfc_detect",        /*带任务名称的字符串*/
+    esp_task_wdt_init(60,0);
+    esp_task_wdt_add(NULL);
+//    xTaskCreate(
+//              nfc_detect,          /*任务函数*/
+//              "nfc_detect",        /*带任务名称的字符串*/
+//              10000,            /*堆栈大小，单位为字节*/
+//              NULL,             /*作为任务输入传递的参数*/
+//              1,                /*任务的优先级*/
+//              NULL);            /*任务句柄*/
+        xTaskCreate(
+              ammo_and_battery_detect,          /*任务函数*/
+              "ammo_and_battery_detect",        /*带任务名称的字符串*/
               10000,            /*堆栈大小，单位为字节*/
               NULL,             /*作为任务输入传递的参数*/
               1,                /*任务的优先级*/
               NULL);            /*任务句柄*/
-    xTaskCreate(
-                ammo_and_battery_detect,          /* Task function. */
-                "ammo_and_battery_detect",        /* String with name of task. */
-                10000,            /* Stack size in bytes. */
-                NULL,             /* Parameter passed as input of the task */
-                1,                /* Priority of the task. */
-                NULL);            /* Task handle. */
-    xTaskCreate(
-              push_detect,          /* Task function. */
-              "push_detect",        /* String with name of task. */
-              10000,            /* Stack size in bytes. */
-              NULL,             /* Parameter passed as input of the task */
-              1,                /* Priority of the task. */
-              NULL);            /* Task handle. */
 }
 
 
 void loop(){
+    //Serial.println("loop");
+    esp_task_wdt_reset(); 
     throw_bullet_detect();
+    
 }
