@@ -36,7 +36,7 @@ void mechine_neg(){
 void mechine_stop(){
     digitalWrite(MECHINE_POS,LOW);
     digitalWrite(MECHINE_NEG,LOW);
-    Serial.println("stop");
+    //Serial.println("stop");
 }
 
 void setup(){

@@ -168,7 +168,7 @@ void fog_signal(void*para){
           send_num=0;
           digitalWrite(LED_FIRE,HIGH);
           digitalWrite(FOG_CTRL,HIGH);
-          vTaskDelay(500); 
+          vTaskDelay(125); 
         }else{
           digitalWrite(FOG_CTRL,LOW);
           digitalWrite(LED_FIRE,LOW);
