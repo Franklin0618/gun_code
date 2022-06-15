@@ -42,6 +42,21 @@ void mechine_stop(){
 void setup(){
     Serial.begin(9600);
     io_init();
+    while(1){
+     if((digitalRead(SPRING_PIPE)==LOW)){
+        mechine_stop();
+     }else{
+        mechine_pos();
+              if(digitalRead(SPRING_PIPE)==HIGH){
+                  mechine_neg();
+                  delay(35);
+                  mechine_stop();
+                  cmd=0;
+                  break;
+              }
+     } 
+              
+    }
 }
 
 void loop(){
@@ -59,6 +74,7 @@ void loop(){
         }
         else{       //电机复位
             while(1){
+              mechine_pos();
               if(digitalRead(SPRING_PIPE)==LOW){
                   mechine_neg();
                   delay(35);
