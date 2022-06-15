@@ -94,8 +94,8 @@ void snprintf_buf(){
 
 //nfc检测
 //读取读卡器扇区中的数据，如果是1则是左手，如果是0则是右手
-void nfc_detect(void * parameter){
-    while (1){
+void nfc_detect(){
+    
         push_detect();
         Serial.write(serial_send,8);
         while(Serial.available()>0){                
@@ -128,7 +128,7 @@ void nfc_detect(void * parameter){
                 memset(buf_send,0,1);
             }
         }
-    }   
+       
 }
 
 //抛弹检测
@@ -227,9 +227,9 @@ void display_init(){
 }
 
 //弹夹计数及电量检测
-void ammo_and_battery_detect(void*para){
-    while(1){
-        tft.drawLine(0, 160, 172, 160, ST77XX_RED);
+void ammo_and_battery_detect(){
+    
+        //tft.drawLine(0, 160, 172, 160, ST77XX_RED);
         // if(int(analogread_float_return(BATTERY))!=battery){
         //     battery=(int)analogread_float_return(BATTERY);
         //     display();
@@ -238,7 +238,7 @@ void ammo_and_battery_detect(void*para){
             bullet=(int)analogread_float_return(BULLET)*MAXBULLET;
             display();
         }
-    }
+    
 }
 
 
@@ -294,21 +294,6 @@ void setup(){
     display_init();
     esp_task_wdt_init(60,0);
     esp_task_wdt_add(NULL);
-//    xTaskCreate(
-//              nfc_detect,          /*任务函数*/
-//              "nfc_detect",        /*带任务名称的字符串*/
-//              10000,            /*堆栈大小，单位为字节*/
-//              NULL,             /*作为任务输入传递的参数*/
-//              1,                /*任务的优先级*/
-//              tskNO_AFFINITY);            /*任务句柄*/
-        xTaskCreatePinnedToCore(
-              ammo_and_battery_detect,          /*任务函数*/
-              "ammo_and_battery_detect",        /*带任务名称的字符串*/
-              10000,            /*堆栈大小，单位为字节*/
-              NULL,             /*作为任务输入传递的参数*/
-              1,                /*任务的优先级*/
-              NULL,
-              1);            /*任务句柄*/
         xTaskCreatePinnedToCore(
         fog_signal,          /*任务函数*/
         "fog_signal",        /*带任务名称的字符串*/
@@ -325,5 +310,6 @@ void loop(){
     //Serial.println("loop");
     esp_task_wdt_reset(); 
     throw_bullet_detect();
-    
+    ammo_and_battery_detect();
+    nfc_detect();
 }
