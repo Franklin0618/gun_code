@@ -28,8 +28,8 @@ void mechine_pos(){
 }
 
 void mechine_neg(){
-    digitalWrite(MECHINE_POS,HIGH);
-    digitalWrite(MECHINE_NEG,LOW);
+    digitalWrite(MECHINE_NEG,HIGH);
+    digitalWrite(MECHINE_POS,LOW);
     Serial.println("neg");
 }
 
@@ -45,6 +45,7 @@ void setup(){
     while(1){
      if((digitalRead(SPRING_PIPE)==LOW)){
         mechine_stop();
+        break;
      }else{
         mechine_pos();
               if(digitalRead(SPRING_PIPE)==HIGH){
@@ -77,10 +78,23 @@ void loop(){
               mechine_pos();
               if(digitalRead(SPRING_PIPE)==LOW){
                   mechine_neg();
-                  delay(35);
+                  delay(40);
                   mechine_stop();
-                  cmd=0;
-                  break;
+                  
+                  if(digitalRead(SPRING_PIPE)==HIGH){
+                    mechine_pos();
+                    if(digitalRead(SPRING_PIPE)==LOW){
+                        mechine_neg();
+                        delay(40);
+                        mechine_stop();
+                        cmd=0;
+                        break;
+                    }
+                  }else{
+                    cmd=0;
+                    mechine_stop();
+                    break;
+                  }
               }
             }
         }
