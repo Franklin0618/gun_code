@@ -4,6 +4,10 @@
 #include<Adafruit_ST7789.h>
 #include<SPI.h>
 #include<esp_task_wdt.h>
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include <soc/soc.h> 
+#include <soc/rtc_cntl_reg.h>
 /////////////////////////////////////////////////////宏定义
 #define COMPANY
 //#define PLAY_GROUND
@@ -14,10 +18,11 @@
 //引脚宏
 #define NEAR_SWITCH         25  //接近开关
 #define READER1             7  //读卡器
-#define PUSH                27  //按压开关控制
-#define FOG_CTRL            35 //雾化器控制
+#define PUSH                33  //按压开关控制
+#define FOG_CTRL            12 //雾化器控制
 #define SHAKE_CTRL          33         //震动控制 
 #define LED                 2           //板载灯
+#define LED_FIRE            27          //枪火灯
 //屏幕宏
 #define TFT_MOSI 23
 #define TFT_SCLK 18
@@ -49,6 +54,7 @@ byte readbuff[22];                              //串口读取缓冲区
 char macStr[44];                                //将串口读取到的数据转化位char型存放的数组
 char old_macStr[44];                            //状态对比
 int old_sta;                                    //按压开关状态对比变量
+int send_num;
 //网络涉及变量
 #ifdef COMPANY
 const char *ssid = "wifi名字长才能穿透墙";              //需要连接的wifi的名字
@@ -130,9 +136,10 @@ void throw_bullet_detect(){
     if(digitalRead(NEAR_SWITCH)==LOW){
         bitWrite(buf_send[0], 0, 1);
         udp_send();     //优先进行网络通信
-        shake_signal(); //振动信号
-        gun_fire_signal();  //喷雾信号
-        Serial.println("trigger");
+        send_num=1;
+//        shake_signal(); //振动信号
+//        gun_fire_signal();  //喷雾信号
+        //Serial.println("trigger");
         bitWrite(buf_send[0], 0, 0);
     }
 }
@@ -154,19 +161,22 @@ void push_detect(){
     
 }
 
-//震动通知
-void shake_signal(){
-    digitalWrite(SHAKE_CTRL,HIGH);
-    delay(500);
-    digitalWrite(SHAKE_CTRL,LOW);
+//震动通知和喷雾一起
+void fog_signal(void*para){
+      while(1){
+        if(send_num==1){
+          send_num=0;
+          digitalWrite(LED_FIRE,HIGH);
+          digitalWrite(FOG_CTRL,HIGH);
+          vTaskDelay(500); 
+        }else{
+          digitalWrite(FOG_CTRL,LOW);
+          digitalWrite(LED_FIRE,LOW);
+        }
+        //Serial.println("fog");
+      }
 }
 
-//喷雾和枪口火焰通知
-void gun_fire_signal(){
-    digitalWrite(FOG_CTRL,HIGH);
-    delay(20);
-    digitalWrite(FOG_CTRL,LOW);
-}
 
 //显示屏
 void display(){
@@ -267,11 +277,13 @@ void io_init(){
     pinMode(FOG_CTRL,OUTPUT);
     pinMode(SHAKE_CTRL,OUTPUT);
     pinMode(LED,OUTPUT);
-
-    digitalWrite(LED,HIGH);
+    pinMode(LED_FIRE,OUTPUT);
+    
+    digitalWrite(LED,LOW);
     digitalWrite(FOG_CTRL,LOW);
     digitalWrite(SHAKE_CTRL,LOW);
     digitalWrite(NEAR_SWITCH,HIGH);
+    digitalWrite(LED_FIRE,LOW);
     Serial.println("io init success!");
 }
 
@@ -288,14 +300,24 @@ void setup(){
 //              10000,            /*堆栈大小，单位为字节*/
 //              NULL,             /*作为任务输入传递的参数*/
 //              1,                /*任务的优先级*/
-//              NULL);            /*任务句柄*/
-        xTaskCreate(
+//              tskNO_AFFINITY);            /*任务句柄*/
+        xTaskCreatePinnedToCore(
               ammo_and_battery_detect,          /*任务函数*/
               "ammo_and_battery_detect",        /*带任务名称的字符串*/
               10000,            /*堆栈大小，单位为字节*/
               NULL,             /*作为任务输入传递的参数*/
               1,                /*任务的优先级*/
-              NULL);            /*任务句柄*/
+              NULL,
+              1);            /*任务句柄*/
+        xTaskCreatePinnedToCore(
+        fog_signal,          /*任务函数*/
+        "fog_signal",        /*带任务名称的字符串*/
+        10000,            /*堆栈大小，单位为字节*/
+        NULL,             /*作为任务输入传递的参数*/
+        1,                /*任务的优先级*/
+        NULL,
+        0);            /*任务句柄*/
+        digitalWrite(LED,HIGH);
 }
 
 
